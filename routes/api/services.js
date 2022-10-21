@@ -20,10 +20,10 @@ const auth = require("../../middlewares/auth");
 const admin = require("../../middlewares/admin");
 const multer  = require('multer');
 const app = require("../../app");
-
+const fs = require("fs");
 
 // storage
-const Storage=multer.diskStorage({
+/*const Storage=multer.diskStorage({
   destination:"uploads",
   filename:(req,file,cb)=>{
     cb(null,file.originalname);
@@ -50,6 +50,7 @@ if(err){
   
     image:{
       data:req.file.filename,
+     // data:fs.readFileSync("uploads/",req.file.filename),
       contentType:"image/png",
     }
   })
@@ -59,18 +60,60 @@ if(err){
 }
   })
 })
-//Insert a record
+*/
+const storage=multer.diskStorage({
+  destination:(req,file,cb)=>{
+    cb(null,'uploads')
+  },
+  filename:(req,file,cb)=>{
+    cb(null,file.originalname)
+  }
 
+})
+
+const upload=multer({storage:storage})
+
+
+//Insert a record
+router.post("/upload", upload.single("testImage"), (req, res) => {
+	const saveImage = Product({
+    firstname:req.body.firstname,
+    lastname:req.body.lastname,
+  city:req.body.city,
+    phone:req.body.phone,
+  
+	image: {
+	data: fs.readFileSync("uploads/" + req.file.originalname),
+	contentType: "image/png",
+	},
+	});
+	saveImage
+	.save()
+	.then((res) => {
+	console.log("image is saved");
+	})
+	.catch((err) => {
+	console.log(err, "error has occur");
+	});
+	res.send('image is saved')
+	});
 //get products
-router.get("/", async (req, res) => {
+/*router.get("/", async (req, res) => {
   console.log(req.user);
   let page = Number(req.query.page ? req.query.page : 1);
   let perPage = Number(req.query.perPage ? req.query.perPage : 10);
   let skipRecords = perPage * (page - 1);
   let products = await Product.find().skip(skipRecords).limit(perPage);
   return res.send (products);
+}); */
+router.get("/", async (req, res) => {
+ // console.log(req.user);
+ /* let page = Number(req.query.page ? req.query.page : 1);
+  let perPage = Number(req.query.perPage ? req.query.perPage : 10);
+  let skipRecords = perPage * (page - 1);*/
+  let products = await Product.find()
+  return res.json (products);
 }); 
-
 //get single products
 router.get("/:id", async (req, res) => {
   try {
@@ -83,23 +126,60 @@ router.get("/:id", async (req, res) => {
   }
 });
 //update a record
-router.put("/:id",  async (req, res) => {
+/*router.put("/:id",  async (req, res) => {
   let product = await Product.findById(req.params.id);
   //product.name = req.body.name;
  // product.price = req.body.price;
   product.firstname=req.body.firstname
   product.lastname=req.body.lastname
   product.city=req.body.city
+  product.phone=req.body.phone
+
+  await product.save();
+  return res.send(product);
+});*/
+
+//update a record with image
+router.put("/:id",upload.single("testImage"),  async (req, res) => {
+  let product = await Product.findById(req.params.id);
+  
+    product.firstname=req.body.firstname,
+    product.lastname=req.body.lastname,
+  product.city=req.body.city,
+    product.phone=req.body.phone,
+  
+	
+	product.data= fs.readFileSync("uploads/" + req.file.originalname),
+	product.contentType="image/png",
+	
+	
+	product
+	.save()
+	.then((res) => {
+	console.log("image is saved");
+	})
+	.catch((err) => {
+	console.log(err, "error has occur");
+	});
+	res.send('image is saved')
+  //product.name = req.body.name;
+ // product.price = req.body.price;
+  product.firstname=req.body.firstname
+  product.lastname=req.body.lastname
+  product.city=req.body.city
+  product.phone=req.body.phone
+
   await product.save();
   return res.send(product);
 });
 //Delete a record
-router.delete("/:id",auth,admin, async (req, res) => {
+router.delete("/:id",auth,admin,
+ async (req, res) => {
   let product = await Product.findByIdAndDelete(req.params.id);
   return res.send(product);
 });
 //Insert a record
-router.post("/",validateProduct, async (req, res) => {
+router.post("/", async (req, res) => {
   let product = new Product();
   product.firstname=req.body.firstname
   product.lastname=req.body.lastname

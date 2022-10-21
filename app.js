@@ -8,6 +8,7 @@ var mongoose=require('mongoose');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/api/users');
+var phonesRouter = require('./routes/api/phones');
 var servicesRouter = require('./routes/api/services');
 var config=require("config")
 var app = express();
@@ -21,9 +22,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(cors())
 app.use('/', indexRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/phones', phonesRouter);
 app.use('/api/services', servicesRouter);
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "http://localhost:3000")

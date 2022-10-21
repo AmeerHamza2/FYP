@@ -66,11 +66,16 @@ router.post("/",validateProduct, async (req, res) => {
 module.exports = router;*/
 const express = require("express");
 let router = express.Router();
+const { Otp } = require("../../models/otpModel");
 let { User } = require("../../models/user");
+
+let { Num } = require("../../models/numberModel");
+
 var bcrypt = require("bcryptjs");
 const _ = require("lodash");
 const jwt = require("jsonwebtoken");
 const config = require("config");
+const otpGenerator=require('otp-generator');
 
 const mailgun=require("mailgun-js");
 const DOMAIN='sandboxf26a5c38b52e4da68cd059e6c4d2daba.mailgun.org';
@@ -95,6 +100,54 @@ router.post("/register", async (req, res) => {
  // return res.send(user);
   return res.send(_.pick(user, ["name", "email"]));
 });
+
+// phone number authentication
+router.post("/signUp", async (req, res) => {
+  const user = await Num.findOne({ number: req.body.number });
+  if (user) return res.status(400).send("User  already exist");
+
+  const OTP=otpGenerator.generate(6,{
+    digits:true,alphabets:false,upperCase:false,lowerCaseAlphabets:false,spechialChars:false
+  });
+  const number=req.body.number;
+  console.log(OTP);
+  const otp=new Otp({number:number,otp:OTP});
+  const salt=await bcrypt.genSalt(10)
+  otp.otp=await bcrypt.hash(otp.otp,salt);
+  const result=await otp.save();
+  return res.status(200).send("Otp send successfully!!");
+  
+});
+
+router.post("/verify",async (req,res)=>{
+  const otpHolder=await Otp.find({
+    number:req.body.number
+  });
+  if(otpHolder.lebgth===0)
+  return res.status(400).send("You used an expired OTP");
+  const rightOtpFind=otpHolder[otpHolder.length-1];
+  const validUser=await bcrypt.compare(req.body.otp,rightOtpFind.otp);
+if(rightOtpFind.number===req.body.number && validUser){
+  const user=new Num(_.pick(req.body,["number"]))
+  let token = jwt.sign(
+    { _id: user._id, name: user.number },
+    config.get("jwtPrivateKey")
+  );
+  const result=await user.save();
+  const OTPDelete=await Ham.deleteMany({
+          number:rightOtpFind.number
+  });
+  return res.status(200).send({
+    message:'User Registered Successfullt!!',
+    token:token,
+    data: result
+  });
+}else{
+  return res.status(400).send("Your OTP Was wrong")
+}
+
+})
+
 router.post("/login", async (req, res) => {
   let user = await User.findOne({ email: req.body.email });
   if (!user) return res.status(400).send("User Not Registered");
@@ -107,24 +160,19 @@ router.post("/login", async (req, res) => {
   res.send(token);
 });
 
-router.put("/forgot", async(req,res)=>{
+
+router.put("/forgot", async (req,res)=>{
   //let user = await User.findOne({ email: req.body.email });
   //if (!user) return res.status(400).send("User with this email does not exit");
   let user = await User.findOne({ email: req.body.email });
   if (!user) return res.status(400).send("User Not Registered");
   let token = jwt.sign(
     { _id: user._id, name: user.name },
-    config.get("RESET_PASSWORD_KEY")
+    config.get("RESET_PASSWORD_KEY"),{expiresIn:'5m'}
   );
-  /*const data={
-    from:'noreply@hello.com',
-    to:req.body.email,
-    subject:'Account Activation Link',
-    
-  
-
-          
-  };*/
+ // const link='http://localhost:3000/ResetPassword/+{token}';
+ var resetUrl = 'http' + '://' + 'localhost' + ':' + 3000 + '/ResetPassword/' + token
+ //let confirmationUrl = currentUrl + `/confirm/${token}`;
  /* var transporter = nodemailer.createTransport({
    
     host: 'smtp.mail.yahoo.com',
@@ -138,11 +186,7 @@ router.put("/forgot", async(req,res)=>{
     
   });*/
   let transporter = nodemailer.createTransport({
-    //host: 'smtp.zoho.com',
- //   host: 'smtppro.zoho.com',
-
-   // secure: true,
-   // port: 465,
+   
    host: 'smtp.office365.com', // Office 365 server
         port: 587,     // secure SMTP
         secure: false,
@@ -157,17 +201,21 @@ router.put("/forgot", async(req,res)=>{
       ciphers: 'SSLv3'
   }
   });
- /* var mailOptions = {
-    from: 'ameerhamzaasif5@gmail.com',
-    to: req.body.email,
-    subject: 'Sending Email using Node.js',
-    text: 'That was easy!'
-  };*/
-  const mailOptions = {
+ 
+ const mailOptions = {
     from:'ameerhamza1710@outlook.com', // sender address
     to: req.body.email,
     subject: 'hello Taimoor!!',// Subject line
-    text: 'email sent using node js'
+    text: 'email sent using node js.\n',
+  //  html: '<a href="${token}">Verify Email.</a>'
+   
+    //html: '<h1>Welcome</h1><p>${http://localhost:3000/ResetPassword/}/resetpassword/${token}</p>'      
+   //html:'<html><body>Hello World....</body></html>'
+//  html:' <p>Click on this link to change your password<a href="http://localhost:3000/ResetPassword/">Forget password/ </a>  </p>' +token
+         
+ // html: '<a href="${token}">Verify Email.</a>'
+ //  html:' <a href="${link}"' >
+ html : 'To reset your password, click this <a href="' + resetUrl + '"><span>link</span></a>.<br>This is a <b>test</b> email.'
    };
   return  user.updateOne({ resetLink:token },function(err,success){
     
@@ -199,4 +247,104 @@ router.put("/forgot", async(req,res)=>{
 
   }).clone();
 });
+
+/*router.put("/reset/:resetLink", async (req,res)=>{
+const {resetLink,newPass}=req.body;
+if(resetLink){
+  jwt.verify(resetLink, config.get("RESET_PASSWORD_KEY"),function(error,decodedData){
+    if(error){
+      return res.status(401).json({
+        error:"Incorrect token or it is expired"
+      })
+    }
+    
+      User.findOne({resetLink}, async (err,user)=>{
+      
+            if(err || !user){
+              return res.status(400).json({error:"User with this token does not exist."});
+            }
+          //  let salt= bcrypt.genSalt(10)
+           // newPass=bcrypt.hash(newPass,salt)
+         //  await user .generateHashedPassword();
+      user.password=newPass
+
+      await user .generateHashedPassword();
+      user.resetLink=''
+        /*    const obj={
+             
+           
+              
+              password:newPass
+           
+            }*/
+           
+            // user.password = newPass;
+             
+            
+          //  user=_.extend(user,obj);
+            
+          /*  user.save((err,result)=>{
+              if(err){
+                return res.status(400).json({error:"reset password error"});
+              }else{
+                return res.status(200).json({message:'Your password has been changes'})
+              }
+            })
+    })
+  })
+}else{
+  return res.status(401).json({error:"Authentication error!!!"});
+}
+
+});*/
+router.put("/reset", async (req,res)=>{
+  const {resetLink,newPass}=req.body;
+  //console.log(resetLink);
+  if(resetLink){
+    jwt.verify(resetLink, config.get("RESET_PASSWORD_KEY"),function(error,decodedData){
+      if(error){
+        return res.status(401).json({
+          error:"Incorrect token or it is expired"
+        })
+      }
+      
+        User.findOne({resetLink}, async (err,user)=>{
+        
+              if(err || !user){
+                return res.status(400).json({error:"User with this token does not exist."});
+              }
+            //  let salt= bcrypt.genSalt(10)
+             // newPass=bcrypt.hash(newPass,salt)
+           //  await user .generateHashedPassword();
+        user.password=newPass
+  
+        await user .generateHashedPassword();
+        user.resetLink=''
+          /*    const obj={
+               
+             
+                
+                password:newPass
+             
+              }*/
+             
+              // user.password = newPass;
+               
+              
+            //  user=_.extend(user,obj);
+              
+              user.save((err,result)=>{
+                if(err){
+                  return res.status(400).json({error:"reset password error"});
+                }else{
+                  return res.status(200).json({message:'Your password has been changes'})
+                }
+              })
+      })
+    })
+  }else{
+    return res.status(401).json({error:"Authentication error!!!"});
+  }
+  
+  });
 module.exports = router;
