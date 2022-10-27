@@ -2,7 +2,7 @@
 const express = require("express");
 let router = express.Router();
 const { Otp } = require("../../models/otpModel");
-
+let { User } = require("../../models/user");
 let { Num } = require("../../models/numberModel");
 
 var bcrypt = require("bcryptjs");
@@ -12,7 +12,7 @@ const config = require("config");
 const otpGenerator=require('otp-generator');
 
 const accountSid = 'AC27a14bc84564d3e77c4f94d0794baa1b'
-const authToken = '7ed6e27c444ceb759132eccce723c4b7'
+const authToken = 'eeaaebf96c01fc6003888e78ddaa3834'
 const client = require('twilio')(accountSid, authToken);
 
 // phone number authentication
@@ -29,7 +29,7 @@ router.post("/signUp", async (req, res) => {
   const number=req.body.number;
   console.log(OTP);
   client.messages
-.create({body:' verification Code send by Ameer Hamza: '+OTP, from: '+12405712487', to: '+92 332 5865614'})
+.create({body:' verification Code send by Ameer Hamza: '+OTP, from: '+12405712487', to: '+923324297542'})
 .then(message => console.log(message.sid));
   const otp=new Otp({number:number,otp:OTP});
   const salt=await bcrypt.genSalt(10)
@@ -50,12 +50,16 @@ router.post("/verify",async (req,res)=>{
   console.log(rightOtpFind);
   const validUser=await bcrypt.compare(req.body.otp,rightOtpFind.otp);
 if(rightOtpFind.number===req.body.number && validUser){
-  const user=new Num(_.pick(req.body,["number"]))
+  const user=new Num(_.pick(req.body,["number"],["password"]))
+  await user.generateHashedPassword();
+
+// const users=new User(_.pick(req.body,["number"]))
   let token = jwt.sign(
     { _id: user._id, name: user.number },
     config.get("jwtPrivateKey")
   );
   const result=await user.save();
+ // const results=await users.save();
   const OTPDelete=await Otp.deleteMany({
           number:rightOtpFind.number
   });
@@ -63,6 +67,7 @@ if(rightOtpFind.number===req.body.number && validUser){
     message:'User Registered Successfullt!!',
     token:token,
     data: result
+   
   });
 }else{
   return res.status(400).send("Your OTP Was wrong")

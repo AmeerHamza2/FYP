@@ -97,6 +97,29 @@ router.post("/upload", upload.single("testImage"), (req, res) => {
 	});
 	res.send('image is saved')
 	});
+ /* router.put("/:id", upload.single("testImage"), (req, res) => {
+     saveImage=Product.findById(req.params.id)
+    const  saveImage = Product({
+      firstname:req.body.firstname,
+      lastname:req.body.lastname,
+    city:req.body.city,
+      phone:req.body.phone,
+    
+    image: {
+    data: fs.readFileSync("uploads/" + req.file.originalname),
+    contentType: "image/png",
+    },
+    });
+    saveImage
+    .save()
+    .then((res) => {
+    console.log("image is saved");
+    })
+    .catch((err) => {
+    console.log(err, "error has occur");
+    });
+    res.send('image is saved')
+    });*/
 //get products
 /*router.get("/", async (req, res) => {
   console.log(req.user);
@@ -148,10 +171,10 @@ router.put("/:id",upload.single("testImage"),  async (req, res) => {
   product.city=req.body.city,
     product.phone=req.body.phone,
   
-	
-	product.data= fs.readFileSync("uploads/" + req.file.originalname),
-	product.contentType="image/png",
-	
+	product.image={
+	data: fs.readFileSync("uploads/" + req.file.filename),
+	contentType:"image/png",
+  }
 	
 	product
 	.save()
@@ -173,7 +196,7 @@ router.put("/:id",upload.single("testImage"),  async (req, res) => {
   return res.send(product);
 });
 //Delete a record
-router.delete("/:id",auth,admin,
+router.delete("/:id",
  async (req, res) => {
   let product = await Product.findByIdAndDelete(req.params.id);
   return res.send(product);

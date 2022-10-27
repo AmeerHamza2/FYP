@@ -102,6 +102,7 @@ router.post("/register", async (req, res) => {
 });
 
 // phone number authentication
+//otp number
 router.post("/signUp", async (req, res) => {
   const user = await Num.findOne({ number: req.body.number });
   if (user) return res.status(400).send("User  already exist");
@@ -122,6 +123,7 @@ router.post("/signUp", async (req, res) => {
 router.post("/verify",async (req,res)=>{
   const otpHolder=await Otp.find({
     number:req.body.number
+    
   });
   if(otpHolder.lebgth===0)
   return res.status(400).send("You used an expired OTP");
@@ -155,6 +157,17 @@ router.post("/login", async (req, res) => {
   if (!isValid) return res.status(401).send("Invalid Password");
   let token = jwt.sign(
     { _id: user._id, name: user.name },
+    config.get("jwtPrivateKey")
+  );
+  res.send(token);
+});
+router.post("/loginPhone", async (req, res) => {
+  let user = await Num.findOne({ number: req.body.number });
+  if (!user) return res.status(400).send("User Not Registered");
+  let isValid = await bcrypt.compare(req.body.password, user.password);
+  if (!isValid) return res.status(401).send("Invalid Password");
+  let token = jwt.sign(
+    { _id: user._id, name: user.number },
     config.get("jwtPrivateKey")
   );
   res.send(token);

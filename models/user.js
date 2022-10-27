@@ -30,20 +30,25 @@ module.exports = ProductModel;*/
 var mongoose = require("mongoose");
 var bcrypt = require("bcryptjs");
 const Joi = require("@hapi/joi");
+const { string } = require("@hapi/joi");
 var userSchema = mongoose.Schema({
   name: String,
   email: String,
+  
   password: String,
 
   role: { 
     type: String,
-    default: "admin",
+    default: "user",
   },
   resetLink:{
     data:String,
     default:''
   },
- 
+  number:{
+    type:String,
+    required:true
+      },
   
 });
 userSchema.methods.generateHashedPassword = async function () {
