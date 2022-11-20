@@ -12,7 +12,7 @@ const config = require("config");
 const otpGenerator=require('otp-generator');
 
 const accountSid = 'AC27a14bc84564d3e77c4f94d0794baa1b'
-const authToken = 'eeaaebf96c01fc6003888e78ddaa3834'
+const authToken = '7c24e076c90c69d2efa5115aa13c4638'
 const client = require('twilio')(accountSid, authToken);
 
 // phone number authentication

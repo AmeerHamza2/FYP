@@ -67,7 +67,7 @@ module.exports = router;*/
 const express = require("express");
 let router = express.Router();
 const { Otp } = require("../../models/otpModel");
-let { User } = require("../../models/user");
+let  User  = require("../../models/user");
 
 let { Num } = require("../../models/numberModel");
 
@@ -87,7 +87,8 @@ router.post("/register", async (req, res) => {
   let user = await User.findOne({ email: req.body.email });
   if (user) return res.status(400).send("User with given Email already exist");
   user = new User(); 
-  user.name = req.body.name;
+  user.firstName = req.body.firstName;
+  user.lastName = req.body.lastName;
   user.email = req.body.email;
   user.password = req.body.password;
   
@@ -153,10 +154,12 @@ if(rightOtpFind.number===req.body.number && validUser){
 router.post("/login", async (req, res) => {
   let user = await User.findOne({ email: req.body.email });
   if (!user) return res.status(400).send("User Not Registered");
+  if (!user) return res.status(400).send("User Not Registered");
   let isValid = await bcrypt.compare(req.body.password, user.password);
   if (!isValid) return res.status(401).send("Invalid Password");
+  
   let token = jwt.sign(
-    { _id: user._id, name: user.name },
+    { _id: user._id, firstName: user.firstName },
     config.get("jwtPrivateKey")
   );
   res.send(token);

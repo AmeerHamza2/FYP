@@ -31,8 +31,14 @@ var mongoose = require("mongoose");
 var bcrypt = require("bcryptjs");
 const Joi = require("@hapi/joi");
 const { string } = require("@hapi/joi");
+const  {serviceSchema}  = require("./ServiceProvider");
 var userSchema = mongoose.Schema({
-  name: String,
+
+
+
+
+  firstName: String,
+  lastName:String,
   email: String,
   
   password: String,
@@ -47,9 +53,25 @@ var userSchema = mongoose.Schema({
   },
   number:{
     type:String,
-    required:true
+   // required:true
       },
-  
+      id:{
+        type: String,
+       // default:"aabbcc"
+      },
+     cart: [
+        {
+         // product:{type: mongoose.Schema.Types.ObjectId, ref:'services'},
+         // name:{type: mongoose.Schema.Types.String, ref:'services'},
+
+         product: serviceSchema,
+          quantity: {
+            type: Number,
+            required: true,
+          },
+        
+        },
+      ],
 });
 userSchema.methods.generateHashedPassword = async function () {
   let salt = await bcrypt.genSalt(10);
@@ -72,6 +94,54 @@ function validateUserLogin(data) {
   });
   return schema.validate(data, { abortEarly: false });
 }
-module.exports.User = User;
+module.exports = User;
+//module.exports.User = User;
 module.exports.validate = validateUser; //for sign up
 module.exports.validateUserLogin = validateUserLogin; // for login
+/*const mongoose = require("mongoose");
+const { serviceSchema } = require("./ServiceProvider");
+
+const userSchema = mongoose.Schema({
+  name: {
+    required: true,
+    type: String,
+    trim: true,
+  },
+  email: {
+    required: true,
+    type: String,
+    trim: true,
+    validate: {
+      validator: (value) => {
+        const re =
+          /^(([^<>()[\]\.,;:\s@\"]+(\.[^<>()[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i;
+        return value.match(re);
+      },
+      message: "Please enter a valid email address",
+    },
+  },
+  password: {
+    required: true,
+    type: String,
+  },
+  address: {
+    type: String,
+    default: "",
+  },
+  type: {
+    type: String,
+    default: "user",
+  },
+  cart: [
+    {
+      product: serviceSchema,
+      quantity: {
+        type: Number,
+        required: true,
+      },
+    },
+  ],
+});
+
+const User = mongoose.model("User", userSchema);
+module.exports = User;*/
